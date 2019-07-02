@@ -230,7 +230,7 @@ const executeGraph = async (allComponents, graph, instance) => {
       const availableOutputs = getOutputs(allComponents)
       const inputs = resolveObject(allComponents[alias].inputs, availableOutputs)
       instance.context.status('Deploying', alias)
-      allComponents[alias].outputs = await component(inputs)
+      allComponents[alias].outputs = (await component(inputs)) || {}
     }
 
     promises.push(fn())
