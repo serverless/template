@@ -37,7 +37,7 @@ class Template extends Component {
 
     const graph = createGraph(allComponentsWithDependencies)
 
-    this.context.debug('Executing template graph.')
+    this.context.debug(`Executing the template's components graph.`)
 
     const allComponentsWithOutputs = await executeGraph(allComponentsWithDependencies, graph, this)
 
