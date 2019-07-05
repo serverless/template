@@ -15,35 +15,33 @@ class Template extends Component {
   async default(inputs = {}) {
     this.context.status('Deploying')
 
-    this.context.debug('getting template')
-
     const template = await getTemplate(inputs)
 
-    this.context.debug('resolving template')
+    this.context.debug(`Resovling the template's static variables.`)
 
     const resolvedTemplate = resolveTemplate(template)
 
-    this.context.debug('getting components')
+    this.context.debug('Collecting components from the template.')
 
     const allComponents = getAllComponents(resolvedTemplate)
 
-    this.context.debug('downloading components')
+    this.context.debug('Downloading any NPM components found in the template.')
 
     const allComponentsDownloaded = await downloadComponents(allComponents)
 
-    this.context.debug('setting dependencies')
+    this.context.debug(`Analyzing the template's components dependencies.`)
 
     const allComponentsWithDependencies = setDependencies(allComponentsDownloaded)
 
-    this.context.debug('creating graph')
+    this.context.debug(`Creating the template's components graph.`)
 
     const graph = createGraph(allComponentsWithDependencies)
 
-    this.context.debug('executing graph')
+    this.context.debug('Executing template graph.')
 
     const allComponentsWithOutputs = await executeGraph(allComponentsWithDependencies, graph, this)
 
-    this.context.debug('syncing state')
+    this.context.debug('Syncing template state.')
 
     await syncState(allComponentsWithOutputs, this)
 
@@ -55,6 +53,7 @@ class Template extends Component {
   async remove() {
     this.context.status('Removing')
 
+    this.context.debug('Flushing template state and removing all components.')
     await syncState({}, this)
 
     return {}

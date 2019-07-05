@@ -141,8 +141,10 @@ const getAllComponents = (obj = {}) => {
 }
 
 const downloadComponents = async (allComponents) => {
+  // npm components property does not start with a period.
+  // ie. local components component property is ./abc or ../abc
   const aliasesToDownload = Object.keys(allComponents).filter(
-    (alias) => allComponents[alias].path !== basename(allComponents[alias].path)
+    (alias) => allComponents[alias].path[0] !== '.'
   )
   const componentsToDownload = pick(aliasesToDownload, allComponents)
 
