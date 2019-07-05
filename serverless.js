@@ -56,6 +56,7 @@ class Template extends Component {
     this.context.debug('Flushing template state and removing all components.')
     await syncState({}, this)
 
+    // todo should we return the removed components outputs here?!
     return {}
   }
 }
