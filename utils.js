@@ -1,5 +1,5 @@
-const { basename } = require('path')
-const { pick, isEmpty, path, assocPath } = require('ramda')
+const { resolve } = require('path')
+const { pick, isEmpty, path, assocPath, uniq } = require('ramda')
 const { Graph, alg } = require('graphlib')
 const traverse = require('traverse')
 const { utils } = require('@serverless/core')
@@ -68,8 +68,7 @@ const getTemplate = async (inputs) => {
 
   if (typeof template === 'string') {
     if (
-      !utils.isJsonPath(template) ||
-      !utils.isYamlPath(template) ||
+      (!utils.isJsonPath(template) && !utils.isYamlPath(template)) ||
       !(await utils.fileExists(template))
     ) {
       throw Error('the referenced template path does not exist')
@@ -125,11 +124,19 @@ const resolveTemplate = (template) => {
   return resolvedTemplate
 }
 
-const getAllComponents = (obj = {}) => {
+const getAllComponents = async (obj = {}) => {
   const allComponents = {}
 
   for (const key in obj) {
-    if (obj[key].component) {
+    if (obj[key] && obj[key].component) {
+      // local components start with a .
+      if (obj[key].component[0] === '.') {
+        // todo should local component paths be relative to cwd?
+        const localComponentPath = resolve(process.cwd(), obj[key].component, 'serverless.js')
+        if (!(await utils.fileExists(localComponentPath))) {
+          throw Error(`No serverless.js file found in ${obj[key].component}`)
+        }
+      }
       allComponents[key] = {
         path: obj[key].component,
         inputs: obj[key].inputs || {}
@@ -148,7 +155,10 @@ const downloadComponents = async (allComponents) => {
   )
   const componentsToDownload = pick(aliasesToDownload, allComponents)
 
-  const componentsList = aliasesToDownload.map((alias) => componentsToDownload[alias].path)
+  // using uniq to remove any duplicates in case
+  // the user is using multiple instances of the same
+  // component, so that it would be downloaded only once
+  const componentsList = uniq(aliasesToDownload.map((alias) => componentsToDownload[alias].path))
 
   const componentsPaths = await utils.download(componentsList)
 

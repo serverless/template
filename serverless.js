@@ -23,7 +23,7 @@ class Template extends Component {
 
     this.context.debug('Collecting components from the template.')
 
-    const allComponents = getAllComponents(resolvedTemplate)
+    const allComponents = await getAllComponents(resolvedTemplate)
 
     this.context.debug('Downloading any NPM components found in the template.')
 
@@ -37,13 +37,13 @@ class Template extends Component {
 
     const graph = createGraph(allComponentsWithDependencies)
 
+    this.context.debug('Syncing template state.')
+
+    await syncState(allComponentsWithDependencies, this)
+
     this.context.debug(`Executing the template's components graph.`)
 
     const allComponentsWithOutputs = await executeGraph(allComponentsWithDependencies, graph, this)
-
-    this.context.debug('Syncing template state.')
-
-    await syncState(allComponentsWithOutputs, this)
 
     const outputs = getOutputs(allComponentsWithOutputs)
 
