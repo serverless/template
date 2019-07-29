@@ -1,5 +1,5 @@
 const { resolve } = require('path')
-const { pick, isEmpty, path, assocPath, uniq } = require('ramda')
+const { pick, isEmpty, path, uniq } = require('ramda')
 const { Graph, alg } = require('graphlib')
 const traverse = require('traverse')
 const { utils } = require('@serverless/core')
@@ -17,10 +17,10 @@ const getOutputs = (allComponents) => {
 const resolveObject = (object, context) => {
   const regex = /\${(\w*:?[\w\d.-]+)}/g
 
-  const resolvedObject = traverse(object).reduce(function(accum, value) {
+  const resolvedObject = traverse(object).forEach(function(value) {
     const matches = typeof value === 'string' ? value.match(regex) : null
-    let newValue = value
     if (matches) {
+      let newValue = value
       for (const match of matches) {
         const referencedPropertyPath = match.substring(2, match.length - 1).split('.')
         const referencedPropertyValue = path(referencedPropertyPath, context)
@@ -37,10 +37,9 @@ const resolveObject = (object, context) => {
           throw Error(`the referenced substring is not a string`)
         }
       }
+      this.update(newValue)
     }
-    accum = assocPath(this.path, newValue, accum)
-    return accum
-  }, {})
+  })
 
   return resolvedObject
 }
@@ -84,10 +83,10 @@ const getTemplate = async (inputs) => {
 const resolveTemplate = (template) => {
   const regex = /\${(\w*:?[\w\d.-]+)}/g
   let variableResolved = false
-  const resolvedTemplate = traverse(template).reduce(function(accum, value) {
+  const resolvedTemplate = traverse(template).forEach(function (value) {
     const matches = typeof value === 'string' ? value.match(regex) : null
-    let newValue = value
     if (matches) {
+      let newValue = value
       for (const match of matches) {
         const referencedPropertyPath = match.substring(2, match.length - 1).split('.')
         const referencedTopLevelProperty = referencedPropertyPath[0]
@@ -113,11 +112,9 @@ const resolveTemplate = (template) => {
           }
         }
       }
+      this.update(newValue)
     }
-    accum = assocPath(this.path, newValue, accum)
-
-    return accum
-  }, {})
+  })
   if (variableResolved) {
     return resolveTemplate(resolvedTemplate)
   }
