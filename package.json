@@ -10,7 +10,7 @@
     "lint": "eslint . --fix --cache"
   },
   "author": "Serverless, Inc.",
-  "license": "Apache",
+  "license": "Apache-2.0",
   "dependencies": {
     "@serverless/core": "^1.0.0",
     "graphlib": "^2.1.7",
