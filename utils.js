@@ -1,8 +1,38 @@
-const { resolve } = require('path')
+const { resolve, join } = require('path')
 const { pick, isEmpty, path, uniq } = require('ramda')
 const { Graph, alg } = require('graphlib')
 const traverse = require('traverse')
 const { utils } = require('@serverless/core')
+const newMetric = require('@serverless/component-metrics')
+
+const getComponentMetric = async (componentPath, componentMethod = 'default', instance) => {
+  const metric = newMetric()
+  metric.componentMethod(componentMethod)
+  metric.componentContext(instance.context.instance.name || 'cli_declarative')
+  metric.componentContextVersion(instance.context.instance.version || '1.0.0')
+  metric.componentError(null)
+
+  let componentName = componentPath
+  let componentVersion
+  const componentPackageJsonPath = join(componentPath, 'package.json')
+
+  // if package.json exists, read it to get name & version
+  if (await utils.fileExists(componentPackageJsonPath)) {
+    const componentPackageJson = await utils.readFile(componentPackageJsonPath)
+    componentName = componentPackageJson.name || componentPath
+    componentVersion = componentPackageJson.version
+  }
+
+  metric.componentName(componentName)
+
+  if (componentVersion) {
+    metric.componentVersion(componentVersion)
+  }
+
+  // we only publish after the method is run
+  // to check whether there was an error
+  return metric
+}
 
 const getOutputs = (allComponents) => {
   const outputs = {}
@@ -83,7 +113,7 @@ const getTemplate = async (inputs) => {
 const resolveTemplate = (template) => {
   const regex = /\${(\w*:?[\w\d.-]+)}/g
   let variableResolved = false
-  const resolvedTemplate = traverse(template).forEach(function (value) {
+  const resolvedTemplate = traverse(template).forEach(function(value) {
     const matches = typeof value === 'string' ? value.match(regex) : null
     if (matches) {
       let newValue = value
@@ -239,7 +269,19 @@ const executeGraph = async (allComponents, graph, instance) => {
       const availableOutputs = getOutputs(allComponents)
       const inputs = resolveObject(allComponents[alias].inputs, availableOutputs)
       instance.context.status('Deploying', alias)
-      allComponents[alias].outputs = (await component(inputs)) || {}
+
+      const metric = await getComponentMetric(componentData.path, 'default', instance)
+
+      try {
+        allComponents[alias].outputs = (await component(inputs)) || {}
+      } catch (e) {
+        // on error, publish error metric
+        metric.componentError(e.message)
+        await metric.publish()
+        throw e
+      }
+
+      await metric.publish()
     }
 
     promises.push(fn())
@@ -262,7 +304,22 @@ const syncState = async (allComponents, instance) => {
       const fn = async () => {
         const component = await instance.load(instance.state.components[alias], alias)
         instance.context.status('Removing', alias)
-        await component.remove()
+
+        const metric = await getComponentMetric(
+          instance.state.components[alias],
+          'remove',
+          instance
+        )
+
+        try {
+          await component.remove()
+        } catch (e) {
+          // on error, publish error metric
+          metric.componentError(e.message)
+          await metric.publish()
+          throw e
+        }
+        await metric.publish()
       }
 
       promises.push(fn())
