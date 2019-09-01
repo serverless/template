@@ -122,10 +122,15 @@ const resolveTemplate = (template) => {
         const referencedTopLevelProperty = referencedPropertyPath[0]
 
         if (!template[referencedTopLevelProperty]) {
-          throw Error(`invalid reference ${match}`)
+          if (process.env[referencedTopLevelProperty]) {
+            newValue = process.env[referencedTopLevelProperty]
+            variableResolved = true
+          } else {
+            throw Error(`invalid reference ${match}`)
+          }
         }
 
-        if (!template[referencedTopLevelProperty].component) {
+        if (!variableResolved && !template[referencedTopLevelProperty].component) {
           variableResolved = true
           const referencedPropertyValue = path(referencedPropertyPath, template)
 
