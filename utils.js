@@ -121,24 +121,29 @@ const resolveTemplate = (template) => {
         const referencedPropertyPath = match.substring(2, match.length - 1).split('.')
         const referencedTopLevelProperty = referencedPropertyPath[0]
 
-        if (!template[referencedTopLevelProperty]) {
-          throw Error(`invalid reference ${match}`)
-        }
-
-        if (!template[referencedTopLevelProperty].component) {
+        if (/\${env:(\w*:?[\w\d.-]+)}/g.test(match)) {
+          newValue = process.env[referencedTopLevelProperty.substr(4)]
           variableResolved = true
-          const referencedPropertyValue = path(referencedPropertyPath, template)
-
-          if (referencedPropertyValue === undefined) {
+        } else {
+          if (!template[referencedTopLevelProperty]) {
             throw Error(`invalid reference ${match}`)
           }
 
-          if (match === value) {
-            newValue = referencedPropertyValue
-          } else if (typeof referencedPropertyValue === 'string') {
-            newValue = newValue.replace(match, referencedPropertyValue)
-          } else {
-            throw Error(`the referenced substring is not a string`)
+          if (!template[referencedTopLevelProperty].component) {
+            variableResolved = true
+            const referencedPropertyValue = path(referencedPropertyPath, template)
+
+            if (referencedPropertyValue === undefined) {
+              throw Error(`invalid reference ${match}`)
+            }
+
+            if (match === value) {
+              newValue = referencedPropertyValue
+            } else if (typeof referencedPropertyValue === 'string') {
+              newValue = newValue.replace(match, referencedPropertyValue)
+            } else {
+              throw Error(`the referenced substring is not a string`)
+            }
           }
         }
       }
