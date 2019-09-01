@@ -120,9 +120,8 @@ const resolveTemplate = (template) => {
       for (const match of matches) {
         const referencedPropertyPath = match.substring(2, match.length - 1).split('.')
         const referencedTopLevelProperty = referencedPropertyPath[0]
-
-        if (/\${env:(\w*:?[\w\d.-]+)}/g.test(match)) {
-          newValue = process.env[referencedTopLevelProperty.substr(4)]
+        if (/\${env\.(\w*:?[\w\d.-]+)}/g.test(match)) {
+          newValue = process.env[referencedPropertyPath[1]]
           variableResolved = true
         } else {
           if (!template[referencedTopLevelProperty]) {
