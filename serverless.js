@@ -17,7 +17,7 @@ class Template extends Component {
 
     const template = await getTemplate(inputs)
 
-    this.context.debug(`Resovling the template's static variables.`)
+    this.context.debug(`Resolving the template's static variables.`)
 
     const resolvedTemplate = resolveTemplate(template)
 
