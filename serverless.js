@@ -8,10 +8,26 @@ const {
   createGraph,
   executeGraph,
   syncState,
-  getOutputs
+  getOutputs,
+  createCustomMethodHandler
 } = require('./utils')
 
 class Template extends Component {
+  constructor(id, context) {
+    const defaultFunction = super(id, context)
+
+    return new Proxy(defaultFunction, {
+      get: (obj, method) => {
+        if (obj.hasOwnProperty(method)) {
+          return obj[method]
+        }
+
+        // Return a catch-all function that will invoke the custom method on requested components
+        return createCustomMethodHandler(obj, method)
+      }
+    })
+  }
+
   async default(inputs = {}) {
     this.context.status('Deploying')
 

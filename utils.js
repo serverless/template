@@ -341,6 +341,53 @@ const syncState = async (allComponents, instance) => {
   await instance.save()
 }
 
+const createCustomMethodHandler = (instance, method) => {
+  return async ({ component, template, ...inputs }) => {
+    let components = Array.isArray(component) ? component : [component]
+    components = components.filter(Boolean)
+
+    if (!components.length) {
+      throw Error(`"component" input is required to run custom methods`)
+    }
+
+    instance.context.debug(
+      `Attempting to run method "${method}" on template aliases: ${components.join(', ')}`
+    )
+    // Load template components
+    const templateComponents = await getAllComponents(template)
+
+    // Get only the requested components ("component" input)
+    const componentsToRun = Object.keys(templateComponents)
+      .filter((alias) => components.includes(alias))
+      .reduce((acc, item) => {
+        acc.push({ alias: item, path: templateComponents[item].path })
+        return acc
+      }, [])
+
+    // Verify all the components have the requested method implemented
+    instance.context.debug(`Verifying presence of method "${method}" in requested components...`)
+    for (let i = 0; i < componentsToRun.length; i++) {
+      const item = componentsToRun[i]
+      const cmp = await instance.load(item.path)
+      if (typeof cmp[method] !== 'function') {
+        throw Error(`method "${method}" not found in "${item.path}"`)
+      }
+      // Store the loaded component so we don't have to load it again
+      componentsToRun[i].component = cmp
+    }
+
+    // Run custom method and return output
+    const outputs = {}
+    for (let i = 0; i < componentsToRun.length; i++) {
+      const cmp = componentsToRun[i]
+      instance.context.debug(`Running method "${method}" on "${cmp.path}"...`)
+      outputs[cmp.alias] = await cmp.component[method](inputs)
+    }
+
+    return outputs
+  }
+}
+
 module.exports = {
   getTemplate,
   resolveTemplate,
@@ -350,5 +397,6 @@ module.exports = {
   createGraph,
   executeGraph,
   syncState,
-  getOutputs
+  getOutputs,
+  createCustomMethodHandler
 }
