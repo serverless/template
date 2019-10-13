@@ -368,7 +368,7 @@ const createCustomMethodHandler = (instance, method) => {
     instance.context.debug(`Verifying presence of method "${method}" in requested components...`)
     for (let i = 0; i < componentsToRun.length; i++) {
       const item = componentsToRun[i]
-      const cmp = await instance.load(item.path)
+      const cmp = await instance.load(item.path, item.alias)
       if (typeof cmp[method] !== 'function') {
         throw Error(`method "${method}" not found in "${item.path}"`)
       }
