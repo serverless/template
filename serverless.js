@@ -17,13 +17,13 @@ class Template extends Component {
     const defaultFunction = super(id, context)
 
     return new Proxy(defaultFunction, {
-      get: (obj, method) => {
-        if (obj.hasOwnProperty(method)) {
-          return obj[method]
+      get: (obj, prop) => {
+        if (obj.hasOwnProperty(prop)) {
+          return obj[prop]
         }
 
-        // Return a catch-all function that will invoke the custom method on requested components
-        return createCustomMethodHandler(obj, method)
+        // Return a function that will invoke the custom method on requested components
+        return createCustomMethodHandler(obj, prop)
       }
     })
   }
