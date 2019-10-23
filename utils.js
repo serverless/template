@@ -353,8 +353,12 @@ const createCustomMethodHandler = (instance, method) => {
     instance.context.debug(
       `Attempting to run method "${method}" on template aliases: ${components.join(', ')}`
     )
+
+    // Make sure the template is an object
+    const templateObject = await getTemplate({ template })
+
     // Load template components
-    const templateComponents = await getAllComponents(template)
+    const templateComponents = await getAllComponents(templateObject)
 
     // Get only the requested components ("component" input)
     const componentsToRun = Object.keys(templateComponents)
