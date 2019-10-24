@@ -18,6 +18,11 @@ class Template extends Component {
 
     return new Proxy(defaultFunction, {
       get: (obj, prop) => {
+        // This handles the weird case when `then` is called on the `defaultFunction`
+        if (prop === 'then') {
+          return obj[prop]
+        }
+
         if (obj.hasOwnProperty(prop)) {
           return obj[prop]
         }
