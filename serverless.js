@@ -7,6 +7,7 @@ const {
   setDependencies,
   createGraph,
   executeGraph,
+  executeGraphRemove,
   syncState,
   getOutputs,
   createCustomMethodHandler
@@ -71,11 +72,32 @@ class Template extends Component {
     return outputs
   }
 
-  async remove() {
+  async remove(inputs = {}) {
     this.context.status('Removing')
 
     this.context.debug('Flushing template state and removing all components.')
-    await syncState({}, this)
+
+    const template = await getTemplate(inputs)
+
+    this.context.debug(`Resolving the template's static variables.`)
+
+    const resolvedTemplate = resolveTemplate(template)
+
+    this.context.debug('Collecting components from the template.')
+
+    const allComponents = await getAllComponents(resolvedTemplate)
+
+    this.context.debug(`Analyzing the template's components dependencies.`)
+
+    const allComponentsWithDependencies = setDependencies(allComponents)
+
+    this.context.debug(`Creating the template's components graph.`)
+
+    const graph = createGraph(allComponentsWithDependencies)
+
+    this.context.debug(`Executing the template's components graph remove.`)
+
+    await executeGraphRemove(allComponentsWithDependencies, graph, this)
 
     // todo should we return the removed components outputs here?!
     return {}

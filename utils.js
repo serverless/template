@@ -5,6 +5,14 @@ const traverse = require('traverse')
 const { utils } = require('@serverless/core')
 const newMetric = require('@serverless/component-metrics')
 
+function sleep(ms) {
+  return new Promise((res) => {
+    setTimeout(() => {
+      res(true)
+    }, ms)
+  })
+}
+
 const getComponentMetric = async (componentPath, componentMethod = 'default', instance) => {
   const metric = newMetric()
   metric.componentMethod(componentMethod)
@@ -341,6 +349,66 @@ const syncState = async (allComponents, instance) => {
   await instance.save()
 }
 
+const executeGraphRemove = async (allComponents, graph, instance) => {
+  const leaves = graph.sinks()
+  if (isEmpty(leaves)) {
+    return allComponents
+  }
+
+  const preorderGraph = (gp, res = []) => {
+    const lvs = gp.sinks()
+    if (lvs && lvs.length > 0) {
+      lvs.forEach((lv) => {
+        if (res.indexOf(lv) === -1) {
+          res.push(lv)
+        }
+        gp.removeNode(lv)
+      })
+
+      return preorderGraph(gp, res)
+    }
+    return res.reverse()
+  }
+
+  const componets = preorderGraph(graph)
+
+  for (const alias of componets) {
+    let loopTime = 5
+    const fn = async () => {
+      const component = await instance.load(instance.state.components[alias], alias)
+      instance.context.status('Removing', alias)
+      const metric = await getComponentMetric(instance.state.components[alias], 'remove', instance)
+
+      // try remove, even through remove main node first,
+      // but the network status may need time to feel it.
+      // So should try to remove for loop
+      const tryRemove = async () => {
+        try {
+          await component.remove()
+        } catch (e) {
+          await metric.publish()
+          // on error, publish error metric
+          if (loopTime <= 0) {
+            metric.componentError(e.message)
+            throw e
+          } else {
+            await sleep(5000)
+            loopTime--
+            await tryRemove()
+          }
+        }
+      }
+
+      await tryRemove()
+      await metric.publish()
+    }
+
+    await fn()
+  }
+
+  await instance.save()
+}
+
 const createCustomMethodHandler = (instance, method) => {
   return async ({ component, template, ...inputs }) => {
     let components = Array.isArray(component) ? component : [component]
@@ -400,6 +468,7 @@ module.exports = {
   setDependencies,
   createGraph,
   executeGraph,
+  executeGraphRemove,
   syncState,
   getOutputs,
   createCustomMethodHandler
